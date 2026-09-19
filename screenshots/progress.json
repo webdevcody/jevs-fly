@@ -1,0 +1,46 @@
+[
+  {
+    "file": "2026-09-19T15-14-46-893Z-garden-intro.png",
+    "label": "Garden welcome",
+    "note": "Storybook garden intro and Jev flight controls.",
+    "at": "2026-09-19T15:14:46.893Z",
+    "info": {
+      "pops": 0,
+      "resets": 0,
+      "calls": 0,
+      "avgLatency": 0,
+      "branch": "\u2014"
+    }
+  },
+  {
+    "file": "2026-09-19T15-17-45-009Z-garden-flight.png",
+    "label": "Garden flight",
+    "note": "",
+    "at": "2026-09-19T15:17:47.363Z",
+    "info": {
+      "pops": 0,
+      "resets": 0,
+      "flyNum": 1,
+      "fly": {
+        "state": "flying",
+        "alive": true,
+        "agl": 27.7,
+        "speed": 11.2,
+        "heading": 19,
+        "energy": 100
+      },
+      "calls": 19,
+      "errors": 0,
+      "avgLatency": 194,
+      "branch": "DIVE",
+      "goblinAlive": true,
+      "webgl": true,
+      "events": [],
+      "audio": {
+        "state": "running",
+        "t": 5.4
+      },
+      "fps": 60
+    }
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "name": "jevs-fly",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A playful FPV garden fly game piloted by TypeSafe Jev",
+  "scripts": {
+    "start": "node server.js",
+    "screenshot": "node scripts/screenshot.mjs"
+  },
+  "dependencies": {
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.11.0"
+  }
+}

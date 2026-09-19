@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jev's Fly · FPV Garden Pop</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2210%22 fill=%22%23ff7a1a%22/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/vendor/three/build/three.module.js",
+        "three/addons/": "/vendor/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="vignette"></div>
+
+  <div id="hud">
+    <div id="reticles"><div id="reticle" class="reticle tracked"><span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span><label></label></div></div>
+    <!-- top-left: scoreboard + minimap -->
+    <section id="score" class="panel">
+      <div class="brand"><span class="dot"></span>JEV'S FLY <em>GARDEN POP</em></div>
+      <div class="scores">
+        <div><b id="sc-pops">0</b><span>goblins popped</span></div>
+        <div><b id="sc-resets">0</b><span>fly resets</span></div>
+        <div><b id="sc-fly">#0</b><span>current fly</span></div>
+        <div><b id="sc-rate">–</b><span>pop rate</span></div>
+      </div>
+      <canvas id="minimap" width="220" height="220"></canvas>
+    </section>
+
+    <!-- right: the AI decision panel -->
+    <section id="ai" class="panel">
+      <header>
+        <div class="title">
+          <span class="pulse"></span> SYSTEM ONE PILOT
+          <small id="st-model">jev</small>
+        </div>
+        <span id="link" class="link">CONNECTING</span>
+      </header>
+      <div class="stats">
+        <div><span>latency</span><b id="st-lat">–</b></div>
+        <div><span>avg</span><b id="st-avg">–</b></div>
+        <div><span>decisions</span><b id="st-hz">–</b></div>
+        <div><span>calls</span><b id="st-calls">0</b></div>
+        <div><span>cost</span><b id="st-cost">–</b></div>
+        <canvas id="latency" width="120" height="28"></canvas>
+      </div>
+      <div class="branch-row">
+        <span>active branch</span><b id="branch">—</b>
+      </div>
+      <div class="tree-wrap">
+        <svg id="tree" viewBox="0 0 420 290" preserveAspectRatio="xMidYMin meet"></svg>
+        <div id="standby"></div>
+      </div>
+      <div class="trail-row"><span>decision trail</span><div id="trail"></div></div>
+      <div class="state-head">
+        <span>what Jev sees <em id="st-q"></em> <em id="st-req" class="req"></em></span>
+        <span class="btns"><button id="state-expand" title="View the full request and response">in/out</button><button id="state-toggle">hide</button></span>
+      </div>
+      <pre id="state-json" class="json" title="Click to view the full request and response"></pre>
+    </section>
+
+    <!-- bottom-left: FPV feed with OSD -->
+    <section id="fpv">
+      <div class="osd">
+        <div class="osd-tl"><span id="osd-nectar">NECTAR 100%</span><span id="osd-time">00:00</span></div>
+        <div class="osd-tr"><span class="rec">● REC</span><span id="osd-hdg">000°</span></div>
+        <div class="osd-bl"><span id="osd-alt">0m</span></div>
+        <div class="osd-br"><span id="osd-spd">0km/h</span></div>
+        <div id="osd-horizon"></div>
+        <div class="osd-cross">+</div>
+        <div class="osd-energy"><i id="osd-energy-fill"></i></div>
+        <div class="osd-label">FLY VIEW · 25° UPTILT</div>
+      </div>
+    </section>
+
+    <!-- bottom-center: radio sticks -->
+    <section id="radio" class="panel">
+      <div class="gimbal"><i id="stick-l"></i><label>THR · YAW</label></div>
+      <div class="radio-mid">
+        <div class="mode" id="flight-mode">ANGLE</div>
+        <div class="thr">THR <b id="thr">0%</b></div>
+      </div>
+      <div class="gimbal"><i id="stick-r"></i><label>PITCH · ROLL</label></div>
+    </section>
+
+    <div id="feed"></div>
+    <div id="banner"></div>
+    <div id="failsafe">FAILSAFE · LINK LOSS — HOLDING</div>
+    <div id="keys">P pause · M mute · H hide HUD</div>
+  </div>
+
+  <!-- full round trip of the latest Jev call: request body in, response body out -->
+  <div id="state-modal">
+    <div class="card">
+      <header>
+        <span class="btns tabs">
+          <button data-tab="input">input → Jev</button>
+          <button data-tab="output">output ← Jev</button>
+        </span>
+        <em id="sm-meta"></em>
+        <span class="btns">
+          <button id="sm-freeze">freeze</button>
+          <button id="sm-copy">copy</button>
+          <button id="sm-close">close ✕</button>
+        </span>
+      </header>
+      <pre id="sm-json" class="json"></pre>
+    </div>
+  </div>
+
+  <div id="intro">
+    <div class="card">
+      <div class="kicker">TypeSafe Jev · System One demo · FPV garden flying</div>
+      <h1>JEV'S FLY</h1>
+      <p>Watch a glowing fly swoop through a storybook garden and pop wandering goblins into colorful sparkles.
+        <b>Jev</b> chooses each turn and dive from the fly's FPV view. The familiar pitch, roll, yaw and throttle
+        controls keep the flight lively; the fly resets at its flower after a pop.</p>
+      <ul>
+        <li><span class="k">◇</span> Turn → choose a yaw toward the goblin</li>
+        <li><span class="k">◇</span> Dive → choose when and how steeply to swoop</li>
+      </ul>
+      <button id="deploy">LET'S FLY <small>(enables sound)</small></button>
+    </div>
+  </div>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

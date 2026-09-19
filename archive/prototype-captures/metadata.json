@@ -1,0 +1,212 @@
+[
+  {
+    "file": "prototype-001.png",
+    "captured_at": "2026-09-19T00:32:02.881Z",
+    "calls": 44,
+    "avg_latency_ms": 218
+  },
+  {
+    "file": "prototype-002.png",
+    "captured_at": "2026-09-19T00:33:26.223Z",
+    "calls": 85,
+    "avg_latency_ms": 197
+  },
+  {
+    "file": "prototype-003.png",
+    "captured_at": "2026-09-19T00:34:06.647Z",
+    "calls": 231,
+    "avg_latency_ms": 226
+  },
+  {
+    "file": "prototype-004.png",
+    "captured_at": "2026-09-19T00:36:22.136Z",
+    "calls": 254,
+    "avg_latency_ms": 206
+  },
+  {
+    "file": "prototype-005.png",
+    "captured_at": "2026-09-19T00:36:22.136Z",
+    "calls": 254,
+    "avg_latency_ms": 206
+  },
+  {
+    "file": "prototype-006.png",
+    "captured_at": "2026-09-19T00:36:22.136Z",
+    "calls": 254,
+    "avg_latency_ms": 206
+  },
+  {
+    "file": "prototype-007.png",
+    "captured_at": "2026-09-19T00:38:49Z",
+    "calls": 41,
+    "avg_latency_ms": 207
+  },
+  {
+    "file": "prototype-008.png",
+    "captured_at": "2026-09-19T00:44:34.247Z",
+    "calls": 419,
+    "avg_latency_ms": 211
+  },
+  {
+    "file": "prototype-009.png",
+    "captured_at": "2026-09-19T00:44:34.247Z",
+    "calls": 419,
+    "avg_latency_ms": 211
+  },
+  {
+    "file": "prototype-010.png",
+    "captured_at": "2026-09-19T00:44:34.247Z",
+    "calls": 419,
+    "avg_latency_ms": 211
+  },
+  {
+    "file": "prototype-011.png",
+    "captured_at": "2026-09-19T00:44:34.247Z",
+    "calls": 419,
+    "avg_latency_ms": 211
+  },
+  {
+    "file": "prototype-012.png",
+    "captured_at": "2026-09-19T00:47:34.914Z",
+    "calls": 351,
+    "avg_latency_ms": 216
+  },
+  {
+    "file": "prototype-013.png",
+    "captured_at": "2026-09-19T00:47:34.914Z",
+    "calls": 351,
+    "avg_latency_ms": 216
+  },
+  {
+    "file": "prototype-014.png",
+    "captured_at": "2026-09-19T00:47:34.914Z",
+    "calls": 351,
+    "avg_latency_ms": 216
+  },
+  {
+    "file": "prototype-015.png",
+    "captured_at": "2026-09-19T00:49:58.044Z",
+    "calls": 265,
+    "avg_latency_ms": 228
+  },
+  {
+    "file": "prototype-016.png",
+    "captured_at": "2026-09-19T00:49:58.044Z",
+    "calls": 265,
+    "avg_latency_ms": 228
+  },
+  {
+    "file": "prototype-017.png",
+    "captured_at": "2026-09-19T00:54:47.658Z",
+    "calls": 806,
+    "avg_latency_ms": 206
+  },
+  {
+    "file": "prototype-018.png",
+    "captured_at": "2026-09-19T00:51:57Z",
+    "calls": null,
+    "avg_latency_ms": null
+  },
+  {
+    "file": "prototype-019.png",
+    "captured_at": "2026-09-19T00:56:47.005Z",
+    "calls": 283,
+    "avg_latency_ms": 211
+  },
+  {
+    "file": "prototype-020.png",
+    "captured_at": "2026-09-19T00:56:47.005Z",
+    "calls": 283,
+    "avg_latency_ms": 211
+  },
+  {
+    "file": "prototype-021.png",
+    "captured_at": "2026-09-19T00:56:47.005Z",
+    "calls": 283,
+    "avg_latency_ms": 211
+  },
+  {
+    "file": "prototype-022.png",
+    "captured_at": "2026-09-19T00:58:25.909Z",
+    "calls": 213,
+    "avg_latency_ms": 218
+  },
+  {
+    "file": "prototype-023.png",
+    "captured_at": "2026-09-19T00:58:25.909Z",
+    "calls": 213,
+    "avg_latency_ms": 218
+  },
+  {
+    "file": "prototype-024.png",
+    "captured_at": "2026-09-19T00:58:25.909Z",
+    "calls": 213,
+    "avg_latency_ms": 218
+  },
+  {
+    "file": "prototype-025.png",
+    "captured_at": "2026-09-19T01:38:43Z",
+    "calls": 564,
+    "avg_latency_ms": 214
+  },
+  {
+    "file": "prototype-026.png",
+    "captured_at": "2026-09-19T02:00:14Z",
+    "calls": 629,
+    "avg_latency_ms": 222
+  },
+  {
+    "file": "prototype-027.png",
+    "captured_at": "2026-09-19T03:21:08.672Z",
+    "calls": 130,
+    "avg_latency_ms": 209
+  },
+  {
+    "file": "prototype-028.png",
+    "captured_at": "2026-09-19T03:21:08.672Z",
+    "calls": 130,
+    "avg_latency_ms": 209
+  },
+  {
+    "file": "prototype-029.png",
+    "captured_at": "2026-09-19T03:21:08.672Z",
+    "calls": 130,
+    "avg_latency_ms": 209
+  },
+  {
+    "file": "prototype-030.png",
+    "captured_at": "2026-09-19T03:49:41.205Z",
+    "calls": 161,
+    "avg_latency_ms": 209
+  },
+  {
+    "file": "prototype-031.png",
+    "captured_at": "2026-09-19T03:49:41.205Z",
+    "calls": 161,
+    "avg_latency_ms": 209
+  },
+  {
+    "file": "prototype-032.png",
+    "captured_at": "2026-09-19T03:50:23.560Z",
+    "calls": 71,
+    "avg_latency_ms": 189
+  },
+  {
+    "file": "prototype-033.png"
+  },
+  {
+    "file": "prototype-034.png"
+  },
+  {
+    "file": "prototype-035.png"
+  },
+  {
+    "file": "prototype-036.png"
+  },
+  {
+    "file": "prototype-037.png"
+  },
+  {
+    "file": "prototype-038.png"
+  }
+]
