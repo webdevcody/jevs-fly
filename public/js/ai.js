@@ -25,13 +25,22 @@ import { terrainHeight } from "./terrain.js";
 
 const DEG = Math.PI / 180;
 const MIN_INTERVAL_MS = 140; // ~5 decisions/second
+
+// What a call costs, per million tokens. Output is billed separately from input and is the
+// larger half of the bill here, so both are counted: at ~5 calls/s the fly spends far more
+// per hour than input alone suggests.
+const INPUT_USD_PER_MTOK = 0.042;
+const OUTPUT_USD_PER_MTOK = 0.21;
+// Gaps longer than this mean the fly wasn't flying (paused, tab hidden, waiting on the pad,
+// backing off after an error). They're left out of the active time the $/h rate divides by,
+// so the figure reads as the rate while actually flying, not an average watered down by idling.
+const MAX_ACTIVE_GAP_S = 2;
 const FAILSAFE_MS = 1500;
 const STALE_MS = 400; // an answer this old no longer carries the fly downward
 
 // Flight controller settings (the only things the fly does on its own).
 const CRUISE_TILT = 0.35; // forward stick while cruising, ~25 m/s
 const DIVE_SPEED = 32; // m/s along the dive path
-const DODGE_GAP_M = 2; // m of air a sidestep leaves between the flight line and the trunk's bark
 const SIDE_KP = 1.2; // roll stick per m of sidestep still to go
 const SIDE_KD = 0.5; // roll stick per m/s of sideways slide (damps it; also keeps the fly flying where it points)
 const SIDE_MAX = 0.9; // most roll stick a sidestep uses, ~35° of bank
@@ -46,6 +55,7 @@ const DUCK_DEG = -25; // steepest descent that still counts as time to duck unde
 const WING_M = 0.6; // m, the fly's reach sideways (wings plus the collision margin)
 const TREE_LOOK_M = 60; // how far along the flight line trees are listed, ~2.4 s at cruise speed
 const TRUNK_GAP_M = 1.5; // m of air between the flight line and the bark that counts as in the way
+const DODGE_GAP_M = 2; // m of air a sidestep leaves between the flight line and the trunk's bark
 const MAX_TRUNKS = 2; // nearest first
 const SIGHT_MARGIN = 1; // m, room for the wings along the line of sight to the goblin
 const POP_RANGE = 4; // m, how close the fly has to get to pop the goblin (see main.js)
@@ -100,8 +110,8 @@ export const QUESTIONS = {
     type: "choice",
     instructions:
       "Trees are thin trunks with canopies high overhead, so the low-flying fly slips between the trunks. " +
-      "`path_ahead.trunks` lists the trunks in its way, nearest first: the flight line passes less than 1.5 m from " +
-      "their bark (`gap_m`, negative: straight through the trunk), on the `side` given. Should the fly sidestep? " +
+      `\`path_ahead.trunks\` lists the trunks in its way, nearest first: the flight line passes less than ${TRUNK_GAP_M} m ` +
+      "from their bark (`gap_m`, negative: straight through the trunk), on the `side` given. Should the fly sidestep? " +
       "Use the first trunk in the list.",
     criteria: {
       left: "Sidestep left: the first trunk in `path_ahead.trunks` is on the right.",
@@ -179,7 +189,13 @@ export class JevPilot {
     this.running = false;
     this.paused = false;
     this.lastDecisionAt = 0;
-    this.stats = { calls: 0, errors: 0, tokens: 0, latencies: [], times: [], started: performance.now() };
+    this.stats = {
+      calls: 0, errors: 0,
+      tokens: 0, inputTokens: 0, outputTokens: 0,
+      costUsd: 0, activeSec: 0,
+      latencies: [], times: [], started: performance.now(),
+    };
+    this.lastCallAt = 0; // for active-time accounting
     this.plan = null; // what the flight controller executes between decisions
     this.requestModel = null; // the model id server.js forwards upstream (from /api/stats)
     this._near = [];
@@ -368,9 +384,17 @@ export class JevPilot {
     }
     const latency = performance.now() - t0;
     this.stats.calls++;
-    this.stats.tokens += data.usage?.input_tokens || 0;
+    const inTok = data.usage?.input_tokens || 0;
+    const outTok = data.usage?.output_tokens || 0;
+    this.stats.inputTokens += inTok;
+    this.stats.outputTokens += outTok;
+    this.stats.tokens = this.stats.inputTokens + this.stats.outputTokens;
+    this.stats.costUsd += (inTok / 1e6) * INPUT_USD_PER_MTOK + (outTok / 1e6) * OUTPUT_USD_PER_MTOK;
+    const now = performance.now();
+    if (this.lastCallAt) this.stats.activeSec += Math.min((now - this.lastCallAt) / 1000, MAX_ACTIVE_GAP_S);
+    this.lastCallAt = now;
     this.stats.latencies.push(latency);
-    this.stats.times.push(performance.now());
+    this.stats.times.push(now);
     if (this.stats.latencies.length > 40) this.stats.latencies.shift();
     if (this.stats.times.length > 20) this.stats.times.shift();
 
