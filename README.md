@@ -1,5 +1,7 @@
 # Jev's Fly
 
+![Jev's Fly: the chase camera on the garden, with the pilot panel showing the four questions Jev answers and the sticks they become.](screenshots/jevs-fly.png)
+
 A colorful Three.js FPV garden game. A glowing fly swoops toward wandering goblins, and contact makes both characters pop into sparkles. The fly returns to its starting flower for the next round. [TypeSafe's Jev](https://docs.typesafe.ai/introduction) chooses its heading and dive about five times per second.
 
 ```bash

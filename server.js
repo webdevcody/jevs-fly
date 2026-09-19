@@ -21,6 +21,10 @@ const PORT = Number(process.env.PORT || 5173);
 const API_KEY = process.env.TYPESAFE_API_KEY;
 const API_URL = process.env.TYPESAFE_API_URL || "https://api.typesafe.ai/v1/systemone";
 const MODEL = process.env.TYPESAFE_MODEL || "jev-latest";
+// Per-million-token prices used for the proof-of-use line below. Output is billed separately
+// from input and dominates the bill at the rate the fly calls, so both are counted.
+const INPUT_USD_PER_MTOK = Number(process.env.TYPESAFE_INPUT_USD_PER_MTOK || 0.042);
+const OUTPUT_USD_PER_MTOK = Number(process.env.TYPESAFE_OUTPUT_USD_PER_MTOK || 0.21);
 // TYPESAFE_TRACE=N saves the first N request/response pairs to .audit/trace/ (API key never written).
 const TRACE_MAX = Number(process.env.TYPESAFE_TRACE || 0);
 const TRACE_DIR = path.join(ROOT, ".audit/trace");
@@ -78,15 +82,17 @@ async function readBody(req) {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-let stats = { requests: 0, errors: 0, inputTokens: 0, firstRequestId: null, lastRequestId: null, lastAt: null };
+let stats = { requests: 0, errors: 0, inputTokens: 0, outputTokens: 0, firstRequestId: null, lastRequestId: null, lastAt: null };
 const keyHint = API_KEY ? `…${API_KEY.slice(-4)}` : "none"; // enough to tell keys apart, not to leak one
 
 // Periodic proof-of-use line: request ids come from TypeSafe's own response headers.
 setInterval(() => {
   if (!stats.lastAt || Date.now() - stats.lastAt > 30_000) return;
   console.log(
-    `[typesafe] key ${keyHint} · ${stats.requests} calls · ${stats.inputTokens.toLocaleString()} input tokens` +
-      ` · ~$${((stats.inputTokens / 1e6) * 0.042).toFixed(3)} · last ${stats.lastRequestId}`,
+    `[typesafe] key ${keyHint} · ${stats.requests} calls · ${stats.inputTokens.toLocaleString()} in` +
+      ` + ${stats.outputTokens.toLocaleString()} out tokens · ~$${(
+        (stats.inputTokens / 1e6) * INPUT_USD_PER_MTOK + (stats.outputTokens / 1e6) * OUTPUT_USD_PER_MTOK
+      ).toFixed(3)} · last ${stats.lastRequestId}`,
   );
 }, 30_000).unref();
 
@@ -134,6 +140,7 @@ async function handleDecide(req, res) {
     }
     const data = JSON.parse(text);
     stats.inputTokens += data.usage?.input_tokens || 0;
+    stats.outputTokens += data.usage?.output_tokens || 0;
     data.server_ms = Math.round(performance.now() - started);
     data.request_id = requestId;
     res.writeHead(200, { "Content-Type": "application/json" });

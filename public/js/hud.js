@@ -264,15 +264,19 @@ export class HUD {
     const elapsed = (performance.now() - stats.started) / 1000;
     const tt = stats.times;
     const hz = tt.length > 1 ? ((tt.length - 1) * 1000) / (tt[tt.length - 1] - tt[0]) : 0;
-    const costPerHour = (stats.tokens / Math.max(1, elapsed)) * 3600 * (0.042 / 1e6);
+    // Cost comes from the pilot, which prices input and output separately and counts only the
+    // time the fly was actually flying — dividing the spend by wall-clock elapsed would report
+    // a rate well under what the bill does, since no tokens are bought while paused or hidden.
+    const costPerHour = stats.activeSec > 1 ? (stats.costUsd / stats.activeSec) * 3600 : 0;
     this.$("st-model").textContent = model || "jev";
     this.$("st-lat").textContent = `${Math.round(latency)} ms`;
     this.$("st-avg").textContent = `${Math.round(avg)} ms`;
     this.$("st-hz").textContent = `${hz.toFixed(1)}/s`;
     this.$("st-calls").textContent = stats.calls.toLocaleString();
-    this.$("st-cost").textContent = `$${costPerHour.toFixed(2)}/h`;
+    this.$("st-cost").textContent = `$${costPerHour.toFixed(2)}/h · $${stats.costUsd.toFixed(3)}`;
     const nq = Object.keys(call.input.questions).length;
-    this.$("st-q").textContent = `${nq} questions · 1 call · ${usage?.input_tokens ?? "?"} tok`;
+    this.$("st-q").textContent =
+      `${nq} questions · 1 call · ${usage?.input_tokens ?? "?"}+${usage?.output_tokens ?? "?"} tok`;
     const req = this.$("st-req");
     req.textContent = requestId ? `${requestId.slice(0, 16)}…` : "";
     req.title = requestId ? `TypeSafe request id: ${requestId}` : "";
