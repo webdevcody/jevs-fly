@@ -1,5 +1,5 @@
 // Static file server + TypeSafe proxy. The API key stays server-side (.env),
-// the browser only ever talks to /api/decide.
+// the browser only ever talks to /api/decide (and posts flight logs to /api/flights).
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -25,6 +25,10 @@ const MODEL = process.env.TYPESAFE_MODEL || "jev-latest";
 const TRACE_MAX = Number(process.env.TYPESAFE_TRACE || 0);
 const TRACE_DIR = path.join(ROOT, ".audit/trace");
 let traced = 0;
+// Each finished flight (path, Jev's decisions, how it ended) is appended to
+// .audit/flights/flights-YYYY-MM-DD.jsonl. FLIGHT_LOG=0 turns it off.
+const FLIGHT_LOG = process.env.FLIGHT_LOG !== "0";
+const FLIGHT_DIR = path.join(ROOT, ".audit/flights");
 
 if (!API_KEY) {
   console.warn("[warn] TYPESAFE_API_KEY is not set — with no Jev answers the fly just waits on the pad.");
@@ -141,8 +145,25 @@ async function handleDecide(req, res) {
   }
 }
 
+async function handleFlight(req, res) {
+  try {
+    const flight = JSON.parse(await readBody(req));
+    if (FLIGHT_LOG) {
+      fs.mkdirSync(FLIGHT_DIR, { recursive: true });
+      const file = path.join(FLIGHT_DIR, `flights-${new Date().toISOString().slice(0, 10)}.jsonl`);
+      fs.appendFileSync(file, JSON.stringify(flight) + "\n");
+    }
+    res.writeHead(204);
+    res.end();
+  } catch (err) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: String(err.message || err) }));
+  }
+}
+
 const server = http.createServer((req, res) => {
   if (req.method === "POST" && req.url === "/api/decide") return handleDecide(req, res);
+  if (req.method === "POST" && req.url === "/api/flights") return handleFlight(req, res);
   if (req.method === "GET" && req.url === "/api/stats") {
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ ...stats, model: MODEL, hasKey: !!API_KEY, endpoint: API_URL }));

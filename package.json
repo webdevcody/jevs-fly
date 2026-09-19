@@ -6,7 +6,9 @@
   "description": "A playful FPV garden fly game piloted by TypeSafe Jev",
   "scripts": {
     "start": "node server.js",
-    "screenshot": "node scripts/screenshot.mjs"
+    "screenshot": "node scripts/screenshot.mjs",
+    "flight-test": "node scripts/flight-test.mjs",
+    "flight-report": "node scripts/flight-report.mjs"
   },
   "dependencies": {
     "three": "^0.186.0"

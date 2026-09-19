@@ -211,7 +211,9 @@ export class Fly {
     const maxAccel = G * TWR;
     const vzErr = c.climb - this.vel.y;
     const dragV = DRAG * this.vel.y * Math.abs(this.vel.y);
-    let throttle = vh ? vh.throttle : (G + vzErr * 2.8 + dragV) / Math.max(0.25, this.up.y) / maxAccel;
+    // 6/s: crisp enough to round out a descent a couple of meters over the ground, and about
+    // critically damped with the wings' 50 ms lag.
+    let throttle = vh ? vh.throttle : (G + vzErr * 6 + dragV) / Math.max(0.25, this.up.y) / maxAccel;
     if (this.energy <= 0) throttle = 0.08; // out of sparkle: wings slow down
     this.throttle = THREE.MathUtils.clamp(throttle, 0.02, 1);
     this.sticks.throttle = this.throttle;

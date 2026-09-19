@@ -5,30 +5,43 @@ import { PLAY_HALF, START_FLOWER } from "./terrain.js";
 
 const SVGNS = "http://www.w3.org/2000/svg";
 
-// Decision-tree layout (viewBox 420 x 290). Jev answers TURN? and DIVE? from the same state;
-// the flight controller flies the result.
+// Decision-tree layout (viewBox 420 x 290). Jev answers TURN?, DODGE?, CLIMB? and DIVE? from
+// the same state; the flight controller flies the result.
 const TURN_OPTS = ["hard_left", "left", "slight_left", "nudge_left", "straight", "nudge_right", "slight_right", "right", "hard_right"];
 const TURN_LABELS = ["◂◂", "◂", "", "", "|", "", "", "▸", "▸▸"];
+const DODGE_OPTS = ["left", "none", "right"];
+const DODGE_LABELS = ["◂", "–", "▸"];
+const CLIMB_OPTS = ["up30", "up20", "up12", "up7", "level", "down6", "down15", "down25"];
+const CLIMB_LABELS = ["30", "20", "12", "7", "0", "-6", "-15", "-25"];
 const DIVE_OPTS = ["not_yet", "d30", "d45", "d60", "d75", "d90"];
-const DIVE_LABELS = ["no", "30°", "45°", "60°", "75°", "90°"];
+const DIVE_LABELS = ["no", "30", "45", "60", "75", "90"];
+const COLS = [55, 160, 265, 370];
 const NODES = {
-  state: { x: 210, y: 18, w: 340, h: 28, kind: "io", title: "STATE → JEV" },
-  turn: { x: 105, y: 104, w: 190, h: 92, kind: "q", title: "TURN?", bars: TURN_OPTS, labels: TURN_LABELS },
-  dive: { x: 315, y: 104, w: 190, h: 92, kind: "q", title: "DIVE?", bars: DIVE_OPTS, labels: DIVE_LABELS },
-  yaw: { x: 105, y: 206, w: 150, h: 42, kind: "act", title: "HEADING" },
-  cruise: { x: 260, y: 206, w: 106, h: 42, kind: "act", title: "CRUISE" },
-  dive_run: { x: 370, y: 206, w: 90, h: 42, kind: "act", title: "DIVE RUN" },
-  sticks: { x: 210, y: 270, w: 340, h: 28, kind: "io", title: "STICKS → FLIGHT CONTROLLER" },
+  state: { x: 210, y: 18, w: 404, h: 28, kind: "io", title: "STATE → JEV" },
+  turn: { x: COLS[0], y: 104, w: 100, h: 92, kind: "q", title: "TURN?", bars: TURN_OPTS, labels: TURN_LABELS },
+  dodge: { x: COLS[1], y: 104, w: 100, h: 92, kind: "q", title: "DODGE?", bars: DODGE_OPTS, labels: DODGE_LABELS },
+  climb: { x: COLS[2], y: 104, w: 100, h: 92, kind: "q", title: "CLIMB?", bars: CLIMB_OPTS, labels: CLIMB_LABELS },
+  dive: { x: COLS[3], y: 104, w: 100, h: 92, kind: "q", title: "DIVE?", bars: DIVE_OPTS, labels: DIVE_LABELS },
+  yaw: { x: COLS[0], y: 206, w: 100, h: 42, kind: "act", title: "HEADING" },
+  sidestep: { x: COLS[1], y: 206, w: 100, h: 42, kind: "act", title: "SIDESTEP" },
+  height: { x: COLS[2], y: 206, w: 100, h: 42, kind: "act", title: "HEIGHT" },
+  dive_run: { x: COLS[3], y: 206, w: 100, h: 42, kind: "act", title: "DIVE RUN" },
+  sticks: { x: 210, y: 270, w: 404, h: 28, kind: "io", title: "STICKS → FLIGHT CONTROLLER" },
 };
 
 const EDGES = [
   ["state", "turn"],
+  ["state", "dodge"],
+  ["state", "climb"],
   ["state", "dive"],
   ["turn", "yaw"],
-  ["dive", "cruise", "not yet"],
+  ["dodge", "sidestep"],
+  ["climb", "height"],
+  ["dive", "height", "not yet"],
   ["dive", "dive_run", "dive"],
   ["yaw", "sticks"],
-  ["cruise", "sticks"],
+  ["sidestep", "sticks"],
+  ["height", "sticks"],
   ["dive_run", "sticks"],
 ];
 
@@ -170,6 +183,7 @@ export class HUD {
       title.textContent = n.title;
       const sub = el("text", { x: q ? 20 : n.w / 2, y: q ? 28 : 29, class: "node-sub", "text-anchor": q ? "start" : "middle" }, g);
       const extra = n.kind === "act" ? el("text", { x: n.w / 2, y: 39, class: "node-sub", "text-anchor": "middle" }, g) : null;
+      const prob = q ? el("text", { x: n.w - 6, y: 14, class: "node-sub", "text-anchor": "end" }, g) : null;
       // Question nodes get one bar per option, filled with Jev's probabilities.
       const bars = new Map();
       if (n.bars) {
@@ -183,7 +197,7 @@ export class HUD {
           bars.set(opt, { b, top, h });
         });
       }
-      this.nodeEls.set(id, { g, title, sub, extra, bars });
+      this.nodeEls.set(id, { g, title, sub, extra, prob, bars });
     }
   }
 
@@ -206,23 +220,33 @@ export class HUD {
 
   showDecision({ decision, answers, state, latency, call, model, usage, stats, requestId }) {
     const diving = decision.dive;
-    const leaf = diving ? "dive_run" : "cruise";
-    const path = new Set(["state", "turn", "dive", "yaw", leaf, "sticks"]);
-    const edges = new Set(["state-turn", "state-dive", "turn-yaw", `dive-${leaf}`, "yaw-sticks", `${leaf}-sticks`]);
+    const leaf = diving ? "dive_run" : "height";
+    const sidestep = !diving && decision.dodge !== 0;
+    const path = new Set(["state", "turn", "dodge", "climb", "dive", "yaw", leaf, "sticks"]);
+    const edges = new Set(["state-turn", "state-dodge", "state-climb", "state-dive", "turn-yaw", `dive-${leaf}`, "yaw-sticks", `${leaf}-sticks`]);
+    if (!diving) edges.add("climb-height");
+    if (sidestep) {
+      path.add("sidestep");
+      edges.add("dodge-sidestep").add("sidestep-sticks");
+    }
     for (const [id, e] of this.nodeEls) e.g.classList.toggle("active", path.has(id));
     for (const [id, e] of this.edgeEls) e.classList.toggle("active", edges.has(id));
     this.$("tree").dataset.branch = decision.branch;
 
+    const trunks = state.path_ahead.trunks.length;
     this.nodeEls.get("state").title.textContent =
-      `STATE → JEV · goblin ${state.goblin.bearing} · ${state.goblin.below_horizon_deg}° below`;
-    const { turn, dive } = answers;
-    this.setNode("turn", `→ ${turn.choice}  ${pct(turn.probabilities?.[turn.choice])}`);
-    this.setBars("turn", turn);
-    this.setNode("dive", `→ ${dive.choice}  ${pct(dive.probabilities?.[dive.choice])}`);
-    this.setBars("dive", dive);
+      `STATE → JEV · goblin ${state.goblin.bearing}, ${state.goblin.below_horizon_deg}° below · ${trunks} trunk${trunks === 1 ? "" : "s"} in the way`;
+    for (const id of ["turn", "dodge", "climb", "dive"]) {
+      const a = answers[id];
+      this.nodeEls.get(id).prob.textContent = pct(a.probabilities?.[a.choice]);
+      this.setNode(id, a.choice);
+      this.setBars(id, a);
+    }
     const dy = decision.yawDelta;
-    this.setNode("yaw", dy === 0 ? "hold heading" : `turn ${Math.abs(dy)}° ${dy < 0 ? "left" : "right"}`, "yaw rate stick");
-    this.setNode("cruise", "alt-hold 30 m", "~25 m/s");
+    this.setNode("yaw", dy === 0 ? "hold heading" : `turn ${Math.abs(dy)}° ${dy < 0 ? "left" : "right"}`, "yaw stick");
+    this.setNode("sidestep", sidestep ? `slide ${decision.dodge < 0 ? "left" : "right"}` : "—", "2 m of air, nose held");
+    const ca = decision.climbAngle;
+    this.setNode("height", diving ? "—" : ca === 0 ? "fly level" : `${ca > 0 ? "climb" : "descend"} ${Math.abs(ca)}°`, "skim ~2 m");
     this.setNode("dive_run", diving ? `${decision.diveAngle}° down` : "—", "32 m/s");
 
     // Trail of recent branches
@@ -333,7 +357,7 @@ export class HUD {
     put("stick-l", s.yaw, s.throttle * 2 - 1);
     put("stick-r", s.roll, s.pitch);
     this.$("thr").textContent = `${Math.round(s.throttle * 100)}%`;
-    this.$("flight-mode").textContent = fly.cmd.dive ? "ANGLE · DIVE" : pilot.failsafe ? "FAILSAFE" : "ANGLE · ALT HOLD";
+    this.$("flight-mode").textContent = fly.cmd.dive ? "ANGLE · DIVE" : pilot.failsafe ? "FAILSAFE" : "ANGLE · SKIM";
 
     // FPV OSD
     const agl = fly.agl();

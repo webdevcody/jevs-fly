@@ -10,6 +10,7 @@ import { Goblin } from "./goblin.js";
 import { AudioEngine } from "./audio.js";
 import { HUD } from "./hud.js";
 import { JevPilot, treeRadiusAt } from "./ai.js";
+import { FlightLog, treeHit } from "./flightlog.js";
 import { terrainHeight, PLAY_HALF, START_FLOWER, FLOWER_HEIGHT } from "./terrain.js";
 
 const params = new URLSearchParams(location.search);
@@ -40,12 +41,15 @@ const audio = new AudioEngine();
 const hud = new HUD();
 
 const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
 const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.45, 0.5, 2.6);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
 const fpvCam = new THREE.PerspectiveCamera(92, 16 / 9, 0.05, 1500);
+// Follows the chase camera into the small window while the main view is full FPV.
+const chasePipCam = new THREE.PerspectiveCamera(camera.fov, 16 / 9, camera.near, camera.far);
 
 // --- game state -------------------------------------------------------------------
 const game = {
@@ -61,6 +65,7 @@ const game = {
   paused: false,
   events: [],
   slowmo: 0,
+  view: "chase", // "chase" (third person) or "fpv" (full-screen fly camera)
 };
 window.game = game;
 game.three = { renderer, scene, camera, THREE };
@@ -73,6 +78,10 @@ const pilot = new JevPilot({
   hud,
 });
 game.pilot = pilot;
+// Every flight's path, Jev's decisions and how it ended (posted to .audit/flights/).
+const flightLog = new FlightLog(world, pilot);
+game.flightLog = flightLog;
+pilot.onDecision = (fly, info) => flightLog.decision(fly, info);
 
 function later(sec, fn) {
   game.timers.push({ t: sec, fn });
@@ -122,6 +131,7 @@ function spawnFly() {
     x: START_FLOWER.x, y: FLOWER_HEIGHT + 1.5, z: START_FLOWER.z, yaw: 0,
   });
   game.fly = d;
+  flightLog.start(d, game.goblin);
   pilot.reset();
   game.popCam = null;
   hud.banner(`FLY #${game.flyNum} TAKING OFF`, "Jev guides the wings");
@@ -131,9 +141,11 @@ function spawnFly() {
   snapCamera();
 }
 
-function popFly(cause, big = false) {
+// `hit` says what the fly ran into (see flightlog.js), for the flight log.
+function popFly(cause, big = false, hit = null) {
   const d = game.fly;
   if (!d || !d.alive) return;
+  flightLog.end(d, { cause, ...hit });
   const pos = d.pos.clone();
   effects.pop(pos, big ? 1.5 : 0.7);
   effects.shake = big ? 1.2 : 0.7;
@@ -145,6 +157,7 @@ function popFly(cause, big = false) {
     t: Math.round(performance.now() / 1000), fly: d.id, cause, flight: Math.round(d.flightTime),
     branch: pilot.plan?.branch, dive: d.cmd.dive, speed: Math.round(d.vel.length()), vy: Math.round(d.vel.y),
     goblinDist: tk ? Math.round(tk.center(new THREE.Vector3()).distanceTo(d.pos)) : null,
+    hit,
   });
   if (cause === "goblin") return; // popGoblin() starts the next round
   game.resets++;
@@ -190,7 +203,8 @@ function checkCollisions() {
   for (const t of world.queryObstacles(p.x, p.z, 4, _near)) {
     const r = treeRadiusAt(t, p.y);
     if (r > 0 && Math.hypot(t.x - p.x, t.z - p.z) < r + 0.3) {
-      popFly(`BUMPED A ${t.kind.toUpperCase()} TREE (${t.id})`);
+      const hit = treeHit(t, d);
+      popFly(`BUMPED A ${t.kind.toUpperCase()} ${hit.part.toUpperCase()} ${hit.fly_agl_m.toFixed(1)} M UP (${t.id})`, false, hit);
       return;
     }
   }
@@ -204,7 +218,9 @@ function checkCollisions() {
       popGoblin(goblin);
       return popFly("goblin", true);
     }
-    if (impact > 6 || d.tiltDeg > 50) return popFly("BOUNCED OFF THE GROUND");
+    if (impact > 6 || d.tiltDeg > 50) {
+      return popFly("BOUNCED OFF THE GROUND", false, { what: "ground", impact_speed: Math.round(impact * 10) / 10, vy: Math.round(d.vel.y * 10) / 10, tilt_deg: Math.round(d.tiltDeg) });
+    }
     p.y = gh + 0.25;
     d.vel.multiplyScalar(0.2);
     d.vel.y = Math.max(0, d.vel.y);
@@ -301,6 +317,23 @@ function updateCamera(dt) {
   camera.lookAt(cam.look);
 }
 
+// The fly's own camera, mounted between its eyes.
+function aimFpvCam(fly, aspect) {
+  if (fpvCam.parent !== fly.model.camMount) fly.model.camMount.add(fpvCam);
+  fpvCam.position.set(0, 0, -0.1);
+  fpvCam.quaternion.identity();
+  fpvCam.aspect = aspect;
+  fpvCam.updateProjectionMatrix();
+  fpvCam.updateWorldMatrix(true, false);
+}
+
+const viewBtn = document.getElementById("view-toggle");
+function toggleView() {
+  game.view = game.view === "fpv" ? "chase" : "fpv";
+  viewBtn.setAttribute("aria-pressed", String(game.view === "fpv"));
+}
+viewBtn.addEventListener("click", toggleView);
+
 // --- main loop ----------------------------------------------------------------------
 const clock = new THREE.Clock();
 let hudTimer = 0;
@@ -325,6 +358,7 @@ function frame() {
     if (d && d.alive) {
       if (d.state === "flying") pilot.fly(d);
       d.update(simDt);
+      flightLog.sample(d, simDt);
       // Wing wash stirs up soft garden dust near the ground.
       const agl = d.agl();
       if (agl < 6 && Math.random() < simDt * 25 * (1 - agl / 6) * d.wingPower * 2) {
@@ -348,6 +382,12 @@ function frame() {
   world.updateSun(game.fly?.alive ? game.fly.pos : cam.look);
   audio.update(dt, { camera, fly: game.fly, goblin: game.goblin });
 
+  // Full FPV needs a live fly; the intro and the pop pull-back stay in third person.
+  const fpvFull = game.view === "fpv" && !!d?.alive;
+  document.body.classList.toggle("fpv-full", fpvFull);
+  if (fpvFull) aimFpvCam(d, window.innerWidth / window.innerHeight);
+  const viewCam = fpvFull ? fpvCam : camera;
+
   // HUD (throttled DOM work)
   hudTimer -= dt;
   if (hudTimer <= 0) {
@@ -359,32 +399,37 @@ function frame() {
         : !dd || !dd.alive ? `FLY POPPED<small>another fly is ready at the flower…</small>`
           : dd.state === "ready" ? `FLY #${dd.id} WAKING UP<small>wings warming · Jev link standing by</small>` : null,
     );
-    hud.updateReticle(camera, game.goblin, game.fly?.alive ? game.fly.pos : camera.position);
+    hud.updateReticle(viewCam, game.goblin, game.fly?.alive ? game.fly.pos : camera.position);
     hud.drawMinimap(world, game.goblin, game.fly);
     hud.updateScore({ pops: game.pops, resets: game.resets, flyNum: game.flyNum });
   }
 
-  // main view
+  // main view: the chase camera, or the fly's own camera in full FPV
+  renderPass.camera = viewCam;
   renderer.shadowMap.needsUpdate = true;
   renderer.setScissorTest(false);
   composer.render();
 
-  // FPV picture-in-picture from the fly's own camera
-  const pip = document.getElementById("fpv");
+  // Picture-in-picture: the fly's view, or the chase view while the main view is FPV.
+  const pip = document.getElementById(fpvFull ? "chase-pip" : "fpv");
   if (d && d.alive && pip.offsetParent !== null) {
     const r = pip.getBoundingClientRect();
     const y = window.innerHeight - r.bottom;
-    d.model.camMount.updateWorldMatrix(true, false);
-    fpvCam.position.set(0, 0, -0.1);
-    fpvCam.quaternion.identity();
-    if (fpvCam.parent !== d.model.camMount) d.model.camMount.add(fpvCam);
-    fpvCam.aspect = r.width / r.height;
-    fpvCam.updateProjectionMatrix();
+    let pipCam = fpvCam;
+    if (fpvFull) {
+      pipCam = chasePipCam;
+      pipCam.position.copy(camera.position);
+      pipCam.quaternion.copy(camera.quaternion);
+      pipCam.aspect = r.width / r.height;
+      pipCam.updateProjectionMatrix();
+    } else {
+      aimFpvCam(d, r.width / r.height);
+    }
     renderer.shadowMap.needsUpdate = false;
     renderer.setScissorTest(true);
     renderer.setViewport(r.left, y, r.width, r.height);
     renderer.setScissor(r.left, y, r.width, r.height);
-    renderer.render(scene, fpvCam);
+    renderer.render(scene, pipCam);
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
   }
@@ -407,6 +452,7 @@ window.addEventListener("keydown", (e) => {
     if (audio.master) audio.master.gain.value = audio.master.gain.value > 0 ? 0 : 0.7;
   }
   if (e.key === "h" || e.key === "H") document.body.classList.toggle("hide-hud");
+  if (e.key === "v" || e.key === "V") toggleView();
 });
 
 function start() {

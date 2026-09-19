@@ -81,6 +81,13 @@
       </div>
     </section>
 
+    <!-- bottom-left while flying full-screen FPV: the third-person chase view -->
+    <section id="chase-pip"><div class="pip-label">THIRD PERSON</div></section>
+
+    <button id="view-toggle" aria-pressed="false" title="Switch between third person and full-screen FPV (V)">
+      <span data-view="chase">3RD PERSON</span><span data-view="fpv">FPV</span><kbd>V</kbd>
+    </button>
+
     <!-- bottom-center: radio sticks -->
     <section id="radio" class="panel">
       <div class="gimbal"><i id="stick-l"></i><label>THR · YAW</label></div>
@@ -94,7 +101,7 @@
     <div id="feed"></div>
     <div id="banner"></div>
     <div id="failsafe">FAILSAFE · LINK LOSS — HOLDING</div>
-    <div id="keys">P pause · M mute · H hide HUD</div>
+    <div id="keys">V view · P pause · M mute · H hide HUD</div>
   </div>
 
   <!-- full round trip of the latest Jev call: request body in, response body out -->

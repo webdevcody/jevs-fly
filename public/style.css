@@ -152,6 +152,40 @@ body.hide-hud #hud > *:not(#fpv) { display: none; }
 .osd-energy i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--red), var(--amber), var(--green)); border-radius: 2px; transition: width 0.2s; }
 .osd-label { bottom: 28px; left: 50%; transform: translateX(-50%); font-size: 9px; opacity: 0.55; letter-spacing: 0.12em; }
 
+/* ---------------- view toggle / full-screen FPV ---------------- */
+#view-toggle {
+  position: absolute; left: 16px; bottom: 240px; pointer-events: auto; cursor: pointer;
+  display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 8px;
+  background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  color: var(--dim); font: 700 12px var(--hud); letter-spacing: 0.14em; transition: border-color 0.15s;
+}
+#view-toggle:hover { border-color: rgba(54, 226, 255, 0.4); }
+#view-toggle span { padding: 4px 10px; border-radius: 5px; transition: color 0.15s, background 0.15s; }
+#view-toggle[aria-pressed="false"] [data-view="chase"], #view-toggle[aria-pressed="true"] [data-view="fpv"] {
+  color: var(--cyan); background: rgba(54, 226, 255, 0.12); box-shadow: inset 0 0 0 1px rgba(54, 226, 255, 0.45);
+}
+#view-toggle kbd { font: 10px var(--mono); border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; margin: 0 4px 0 6px; }
+
+#chase-pip {
+  display: none; position: absolute; left: 16px; bottom: 16px; width: 384px; height: 216px;
+  border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+.pip-label { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font: 600 9px var(--mono); letter-spacing: 0.12em; color: #f4fff4; opacity: 0.55; text-shadow: 0 0 3px #000; }
+body.fpv-full #chase-pip { display: block; }
+
+/* The feed fills the screen under the panels; OSD corners sit in the gap between them. */
+body.fpv-full #fpv { left: 0; bottom: 0; width: 100%; height: 100%; z-index: -1; border: 0; border-radius: 0; box-shadow: none; }
+body.fpv-full .osd { --tl: 284px; --bl: 416px; --r: 472px; --t: 16px; --b: 156px; font-size: 16px; }
+body.fpv-full.hide-hud .osd { --tl: 24px; --bl: 24px; --r: 24px; --t: 20px; --b: 20px; }
+body.fpv-full .osd-tl { top: var(--t); left: var(--tl); }
+body.fpv-full .osd-tr { top: var(--t); right: var(--r); }
+body.fpv-full .osd-bl { bottom: calc(var(--b) + 16px); left: var(--bl); }
+body.fpv-full .osd-br { bottom: calc(var(--b) + 16px); right: var(--r); }
+body.fpv-full .osd-energy { left: var(--bl); right: var(--r); bottom: var(--b); height: 5px; }
+body.fpv-full .osd-label { bottom: calc(var(--b) + 22px); font-size: 11px; }
+body.fpv-full #osd-horizon { width: 220px; }
+body.fpv-full .osd-cross { font-size: 26px; }
+
 /* ---------------- radio ---------------- */
 #radio {
   left: 416px; bottom: 16px; padding: 10px 14px; display: flex; align-items: center; gap: 14px;
@@ -220,4 +254,5 @@ body.hide-hud #hud > *:not(#fpv) { display: none; }
 @media (max-width: 1100px) {
   #ai { width: 360px; }
   #radio { display: none; }
+  body.fpv-full:not(.hide-hud) .osd { --r: 392px; --b: 24px; }
 }
